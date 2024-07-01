@@ -7,7 +7,7 @@ import { convertXlsxToCsv } from "./utils/xlstocsv.js";
 import express from "express";
 import csvtojson from 'csvtojson';
 import { Company,Contact } from "./db/schemas.js";
-
+import moment from "moment";
 const app = express();
 setupMiddlewares(app);
 app.use("/sheets",express.static("sheets"));
@@ -29,12 +29,12 @@ app.post("/upload-files-company", upload.single("file"), async (req, res) => {
       const arrayToInsert = source.map((row) => ({
         name: row["Company Name"],
         address: row["Company Address"],
-        phone: row["Company Phone"], // Changed from mobileNo to phone to match schema
-        email: row["Company Email"], // Added to match schema
-        website: row["Company Website"], // Added to match schema
-        Number_of_Employees: parseInt(row["Number of Employees"], 10), // Added to match schema, ensure integer
-        Founded_Date: row["Founded Date"] ? new Date(row["Founded Date"]) : null, // Added to match schema, ensure Date object
-        IndustryType: row["Industry Type"], // Added to match 
+        phone: row["Company Phone"], 
+        email: row["Company Email"], 
+        website: row["Company Website"], 
+        Number_of_Employees: parseInt(row["Number of Employees"], 10), 
+        Founded_Date: row["Founded Date"] ? new Date(row["Founded Date"]) : null, 
+        IndustryType: row["Industry Type"], 
       }));
 
       const result=await Company.insertMany(arrayToInsert);
@@ -80,14 +80,27 @@ app.post("/upload-files-contact", upload.single("file"), async (req, res) => {
           throw new Error(`Company ${companyName} does not exist in the database.`);
         }
 
-        const contactToInsert = {
-          company_id: company._id, // Adjusted to match the schema field name
-          name: row["Contact Name"],
-          email: row["Contact Email"],
-          phone: row["Contact Phone"] || null, // Ensuring default null if phone is not provided
-          birthdate: row["Date of Birth"] ? new Date(row["Date of birth"]) : null, // Converting to Date object and ensuring default null
-          contact_type: row["Contact Type"], // Assuming "Contact Type" is correctly provided as 'Primary', 'Secondary', or 'Other'
-        };
+        let birthdate = null;
+    if (row["Date of Birth"]) {
+        
+        const parsedDate = moment(row["Date of Birth"], "MM/DD/YY");
+        if (parsedDate.isValid()) {
+            birthdate = parsedDate.toDate();
+        } else {
+            console.error(`Invalid date format for ${row["Contact Name"]}: ${row["Date of Birth"]}`);
+            
+        }
+    }
+
+    const contactToInsert = {
+      company_id: company._id,
+      name: row["Contact Name"],
+      email: row["Contact Email"],
+      phone: row["Contact Phone"] || null,
+      birthdate: birthdate,
+      contact_type: row["Contact Type"],
+    };
+        
         console.log(row["Date of Birth"])
 
         const result = await Contact.create(contactToInsert);
@@ -95,7 +108,8 @@ app.post("/upload-files-contact", upload.single("file"), async (req, res) => {
         
       }
 
-      res.json("Contacts uploaded and linked to companies successfully.");
+      res.statusCode = 200;
+      res.json("succes");
     } else {
       res.json("Unsupported file type");
     }
