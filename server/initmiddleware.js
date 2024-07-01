@@ -9,6 +9,7 @@ function setupMiddlewares(app){
     app.use(morgan("dev"));
     app.use(express.json());
     dotenv.config();
+   
 }
 
 export { setupMiddlewares };

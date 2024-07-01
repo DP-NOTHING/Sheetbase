@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import {useState} from 'react';
 import * as XLSX from 'xlsx';
+import axios from 'axios';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -21,11 +22,16 @@ export default function Form() {
   const [excelFile, setExcelFile] = useState(null);
   const [typeError, setTypeError] = useState(null); 
   const [excelData, setExcelData] = useState(null);
-
+  const [dataType, setDataType] = useState('company');
+  const [file, setFile] = useState(null);
+  const handleDataTypeChange = (event) => {
+    setDataType(event.target.value);
+  };
   const handleFile=(e)=>{
     let fileTypes = ['application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/csv'];
     let selectedFile = e.target.files[0];
     if(selectedFile){
+      setFile(selectedFile);
       if(selectedFile&&fileTypes.includes(selectedFile.type)){
         setTypeError(null);
         let reader = new FileReader();
@@ -54,7 +60,20 @@ export default function Form() {
       setExcelData(data.slice(0,10));
     }
   }
-
+  const pushtodb=async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    formData.append("file", file);
+    console.log("hello" + file);
+    
+      await axios.post(`${process.env.REACT_APP_BACKEND}/upload-files-${dataType}`, formData).then(res => {
+        console.log(res);
+      }).catch(e => {console.log(e); })
+    
+    // catch (e) {
+    //   console.log(e);
+    // }
+  }
   return (
     <div className="wrapper">
 
@@ -67,6 +86,17 @@ export default function Form() {
           <div className="alert alert-danger" role="alert">{typeError}</div>
         )}
       </form>
+
+      <div className="data-type-selector">
+  <div className="form-check form-check-inline">
+    <input className="form-check-input" type="radio" name="dataType" id="company" value="company" onChange={handleDataTypeChange} checked/>
+    <label className="form-check-label" for="company">Company</label>
+  </div>
+  <div className="form-check form-check-inline">
+    <input className="form-check-input" type="radio" name="dataType" id="contact" value="contact" onChange={handleDataTypeChange} />
+    <label className="form-check-label" for="contact">Contact</label>
+  </div>
+</div>
 
       <div className="viewer">
         {excelData?(
