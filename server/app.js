@@ -6,7 +6,7 @@ import { upload } from "./db/connection.js";
 import { convertXlsxToCsv } from "./utils/xlstocsv.js";
 import express from "express";
 import csvtojson from 'csvtojson';
-import { Company } from "./db/schemas.js";
+import { Company,Contact } from "./db/schemas.js";
 
 const app = express();
 setupMiddlewares(app);
@@ -20,7 +20,7 @@ app.post("/upload-files-company", upload.single("file"), async (req, res) => {
   try {
     const fileExtension = req.file.originalname.split(".").pop().toLowerCase();
 
-    if (fileExtension === "xlsx") {
+    if (fileExtension === "xlsx" || fileExtension === "xls") {
       const csvFilePath = filePath.replace(".xlsx", ".csv");
       convertXlsxToCsv(filePath, csvFilePath);
       console.log("XLSX converted to CSV:", csvFilePath);
@@ -40,7 +40,8 @@ app.post("/upload-files-company", upload.single("file"), async (req, res) => {
       const result=await Company.insertMany(arrayToInsert);
       console.log(result);
 
-      console.log("Array to insert:", arrayToInsert);
+      res.statusCode = 200;
+      res.json("succes");
     } else {
       res.json("unsupported file type");
     }
@@ -48,16 +49,24 @@ app.post("/upload-files-company", upload.single("file"), async (req, res) => {
     console.error(err);
     res.json("Internal Server Error");
   }
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error("Error deleting file:", err);
+    } else {
+      console.log("File deleted successfully:", filePath);
+    }
+  });
+  
 });
 
-app.post("/upload-contacts", upload.single("file"), async (req, res) => {
+app.post("/upload-files-contact", upload.single("file"), async (req, res) => {
   const filePath = "./sheets/" + req.file.filename;
   console.log("File Uploaded:", filePath);
 
   try {
     const fileExtension = req.file.originalname.split(".").pop().toLowerCase();
 
-    if (fileExtension === "xlsx") {
+    if (fileExtension === "xlsx" || fileExtension === "xls") {
       const csvFilePath = filePath.replace(".xlsx", ".csv");
       convertXlsxToCsv(filePath, csvFilePath);
       console.log("XLSX converted to CSV:", csvFilePath);
@@ -79,6 +88,7 @@ app.post("/upload-contacts", upload.single("file"), async (req, res) => {
           birthdate: row["Date of Birth"] ? new Date(row["Date of birth"]) : null, // Converting to Date object and ensuring default null
           contact_type: row["Contact Type"], // Assuming "Contact Type" is correctly provided as 'Primary', 'Secondary', or 'Other'
         };
+        console.log(row["Date of Birth"])
 
         const result = await Contact.create(contactToInsert);
         console.log("Contact inserted:", result);
@@ -101,13 +111,7 @@ app.post("/upload-contacts", upload.single("file"), async (req, res) => {
       console.log("File deleted successfully:", filePath);
     }
   });
-  fs.unlink(csvFilePath, (err) => {
-    if (err) {
-      console.error("Error deleting file:", err);
-    } else {
-      console.log("File deleted successfully:", csvFilePath);
-    }
-  });
+ 
 });
 app.get("/", async (req, res) => {
   try {
